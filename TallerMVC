@@ -1,0 +1,423 @@
+CREATE DATABASE TallerMVC;
+
+USE TallerMVC
+
+CREATE TABLE Usuarios(
+	id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+	nombres varchar(100) NOT NULL,
+	apellidos varchar(100) NOT NULL,
+	email varchar(50) NOT NULL,
+	contrasenia varchar(20) NOT NULL	
+);
+
+CREATE TABLE Admins(
+	id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+	nombres varchar(100) NOT NULL,
+	apellidos varchar(100) NOT NULL,
+	email varchar(50) NOT NULL,
+	contrasenia varchar(20) NOT NULL,	
+	puesto varchar(20) NOT NULL
+);
+
+CREATE TABLE Vehiculos(
+	id int IDENTITY(1,1) NOT NULL PRIMARY KEY,
+	usuario_id int NOT NULL,
+	marca varchar(20) NOT NULL,
+	placas varchar(20) NOT NULL,
+	modelo varchar(15) NOT NULL
+);
+
+CREATE TABLE Citas(
+	id int IDENTITY(1,1) NOT NULL PRIMARY KEY,
+	vehiculo_id int NOT NULL,
+	usuario_id int NOT NULL	
+);
+
+CREATE TABLE Detalles_citas(
+	id int IDENTITY(1,1) NOT NULL PRIMARY KEY,
+	cita_id int NOT NULL,
+	fecha date NOT NULL,
+	horario time NOT NULL,
+	descripcion varchar(500) NOT NULL
+);
+
+
+CREATE TABLE Estados(
+	id int IDENTITY(1,1) NOT NULL PRIMARY KEY,
+	cita_id int NOT NULL,
+	admin_id int NULL,
+	estado varchar(10) NULL,
+	descripcion varchar(500) NULL
+);
+
+ALTER TABLE Citas ADD CONSTRAINT Fk_usuario_Cita  FOREIGN KEY (usuario_id)  REFERENCES Usuarios(id);
+ALTER TABLE Citas ADD CONSTRAINT Fk_vehiculoid_Cita  FOREIGN KEY (vehiculo_id)  REFERENCES Vehiculos(id);
+
+ALTER TABLE Detalles_citas ADD CONSTRAINT Fk_cita_Detalles  FOREIGN KEY (cita_id)  REFERENCES Citas(id);
+
+
+ALTER TABLE Estados ADD CONSTRAINT Fk_cita_Estados  FOREIGN KEY (cita_id)  REFERENCES Citas(id);
+ALTER TABLE Estados ADD CONSTRAINT Fk_admin_Estados  FOREIGN KEY (admin_id)  REFERENCES Admins(id);
+
+ALTER TABLE Vehiculos ADD CONSTRAINT Fk_usuarios_vehiculos  FOREIGN KEY (usuario_id)  REFERENCES Usuarios(id);
+
+------------------------sp para usuarios-------------------
+CREATE PROCEDURE spBuscarUsuarioPorEmail
+    @email varchar(50)
+AS
+BEGIN
+    SELECT * FROM Usuarios WHERE email = @email
+END
+
+---------------------------------------------------------------
+CREATE PROCEDURE spBuscarUsuarioPorId
+    @id INT
+AS
+BEGIN
+    SELECT * FROM Usuarios WHERE id = @id
+END
+
+---------------------------------------------------------------
+CREATE PROCEDURE spAgregarUsuario
+    @nombres varchar(100),
+    @apellidos varchar(100),
+    @email varchar(50),
+    @contrasenia varchar(20)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO Usuarios (nombres, apellidos, email, contrasenia)
+    VALUES (@nombres, @apellidos, @email, @contrasenia);
+END
+---------------------------------------------------------------
+CREATE PROCEDURE spEditarUsuario
+(
+    @id INT,
+    @nombres VARCHAR(100),
+    @apellidos VARCHAR(100),
+    @email VARCHAR(50),
+    @contrasenia VARCHAR(20)
+)
+AS
+BEGIN
+    UPDATE Usuarios
+    SET
+        nombres = @nombres,
+        apellidos = @apellidos,
+        email = @email,
+        contrasenia = @contrasenia
+    WHERE
+        id = @id
+END
+
+---------------------------------------------------------------
+CREATE PROCEDURE spEliminarUsuario
+(
+    @id INT
+)
+AS
+BEGIN
+	-- Eliminar los detalles de citas relacionados con las citas del usuario
+    DELETE FROM Detalles_citas
+    WHERE cita_id IN (SELECT id FROM Citas WHERE usuario_id = @id)
+
+	--Eliminar par Estados
+	DELETE FROM Estados
+	WHERE cita_id IN (SELECT id FROM Citas WHERE usuario_id = @id)
+
+    -- Eliminar las citas relacionadas con el usuario
+    DELETE FROM Citas
+    WHERE usuario_id = @id
+
+	-- Eliminar los vehiculos
+    DELETE FROM Vehiculos
+    WHERE usuario_id = @id
+
+    -- Eliminar el usuario de la tabla Usuarios
+    DELETE FROM Usuarios
+    WHERE id = @id
+END
+
+
+------------------------sp para admins-------------------
+CREATE PROCEDURE spBuscarAdminPorEmail
+    @email varchar(50)
+AS
+BEGIN
+    SELECT * FROM Admins WHERE email = @email
+END
+---------------------------------------------------------------
+CREATE PROCEDURE spBuscarAdminPorId
+    @id INT
+AS
+BEGIN
+    SELECT * FROM Admins WHERE id = @id
+END
+---------------------------------------------------------------
+CREATE PROCEDURE spAgregarAdmin
+    @nombres varchar(100),
+    @apellidos varchar(100),
+    @email varchar(50),
+    @contrasenia varchar(20),
+	@puesto varchar(20)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO Admins(nombres, apellidos, email, contrasenia, puesto)
+    VALUES (@nombres, @apellidos, @email, @contrasenia, @puesto);
+END
+---------------------------------------------------------------
+CREATE PROCEDURE spEliminarAdmin
+(
+    @id INT
+)
+AS
+BEGIN
+    -- Eliminar el admin de la tabla 
+    DELETE FROM Admins
+    WHERE id = @id
+END
+
+---------------------------------------------------------------
+CREATE PROCEDURE spEditarAdmin
+(
+    @id INT,
+    @nombres VARCHAR(100),
+    @apellidos VARCHAR(100),
+    @email VARCHAR(50),
+    @contrasenia VARCHAR(20),
+	@puesto VARCHAR(20)
+)
+AS
+BEGIN
+    UPDATE Admins
+    SET
+        nombres = @nombres,
+        apellidos = @apellidos,
+        email = @email,
+        contrasenia = @contrasenia,
+		puesto = @puesto
+    WHERE
+        id = @id
+END
+
+
+
+
+------------------------sp para vehiculos-------------------
+CREATE PROCEDURE spBuscarVehiculosPorUsuario
+    @usuario_id INT
+AS
+BEGIN
+    SELECT * FROM Vehiculos WHERE usuario_id = @usuario_id;
+END
+---------------------------------------------------------------
+CREATE PROCEDURE spBuscarVehiculoPorId
+    @id INT
+AS
+BEGIN
+    SELECT * FROM Vehiculos WHERE id = @id;
+END
+---------------------------------------------------------------
+CREATE PROCEDURE InsertarVehiculo
+    @usuario_id INT,
+    @marca VARCHAR(20),
+    @placas VARCHAR(20),
+    @modelo VARCHAR(15)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    INSERT INTO Vehiculos (usuario_id, marca, placas, modelo)
+    VALUES (@usuario_id, @marca, @placas, @modelo);
+END;
+---------------------------------------------------------------
+CREATE PROCEDURE spEditarVehiculo
+(
+    @id INT,
+    @marca VARCHAR(100),
+    @modelo VARCHAR(100),
+    @placas VARCHAR(50)
+)
+AS
+BEGIN
+    UPDATE Vehiculos
+    SET
+        marca = @marca,
+        modelo = @modelo,
+        placas = @placas
+    WHERE
+        id = @id
+END
+---------------------------------------------------------------
+CREATE PROCEDURE spEliminarVehiculo
+(
+    @id INT
+)
+AS
+BEGIN
+	-- Eliminar los detalles de citas relacionados con las citas del vehiculo
+    DELETE FROM Detalles_citas
+    WHERE cita_id IN (SELECT id FROM Citas WHERE vehiculo_id = @id)
+
+    -- Eliminar las citas relacionadas con el usuario
+    DELETE FROM Citas
+    WHERE vehiculo_id = @id
+
+	-- Eliminar los vehiculos
+    DELETE FROM Vehiculos
+    WHERE usuario_id = @id
+
+    -- Eliminar el usuario de la tabla Usuarios
+    DELETE FROM Vehiculos
+    WHERE id = @id
+END
+------------------------sp para citas-------------------
+CREATE PROCEDURE spBuscarCitaPorId
+    @citaId int
+AS
+BEGIN
+    SELECT id, vehiculo_id, usuario_id
+    FROM Citas
+    WHERE id = @citaId
+END
+---------------------------------------------------------------
+CREATE PROCEDURE spInsertarCitaConDetalles
+	@vehiculo_id int,
+	@usuario_id int,
+	@fecha datetime,
+	@horario varchar(30),
+	@descripcion varchar(500)
+AS
+BEGIN
+	-- Insertar cita y obtener su ID
+	DECLARE @cita_id int
+	INSERT INTO Citas (vehiculo_id, usuario_id) VALUES (@vehiculo_id, @usuario_id)
+	SET @cita_id = SCOPE_IDENTITY()
+
+	-- Insertar detalles de la cita
+	INSERT INTO Detalles_citas (cita_id, fecha, horario, descripcion) VALUES (@cita_id, @fecha, @horario, @descripcion)
+
+	--insertar la cita en los estados para validar
+	INSERT INTO Estados (cita_id) VALUES (@cita_id);
+END
+---------------------------------------------------------------
+CREATE PROCEDURE sp_obtener_estados_citas
+    @usuario_id INT
+AS
+BEGIN
+	select c.id,dc.fecha, dc.horario, e.estado, e.descripcion from Citas c
+	INNER JOIN Detalles_citas dc ON c.id = dc.cita_id
+	INNER JOIN Estados e ON c.id = e.cita_id
+	where usuario_id = @usuario_id
+END
+---------------------------------------------------------------
+CREATE PROCEDURE ObtenerDetallesCitas
+    @cita_id int
+AS
+BEGIN
+    SELECT 
+        c.id,
+	c.usuario_id,
+	c.vehiculo_id,
+        dc.fecha,
+        dc.horario,
+        dc.descripcion
+    FROM 
+        Detalles_citas dc
+        INNER JOIN Citas c ON c.id = dc.cita_id
+    WHERE 
+        dc.cita_id = @cita_id
+END
+---------------------------------------------------------------
+CREATE PROCEDURE spEditarCita
+(
+    @id INT,
+    @fecha DATETIME,
+    @horario TIME,
+	@descripcion VARCHAR(500)
+)
+AS
+BEGIN
+    UPDATE Detalles_citas
+    SET
+        fecha = @fecha,
+		horario = @horario,
+		descripcion = @descripcion
+    WHERE
+        cita_id IN (SELECT id FROM Citas WHERE id = @id)
+END
+---------------------------------------------------------------
+ALTER PROCEDURE spEliminarCitas
+(
+    @id INT
+)
+AS
+BEGIN
+
+	--Eliminar par Estados
+	DELETE FROM Estados
+	WHERE cita_id = @id
+
+	-- Eliminar los detalles de citas 
+    DELETE FROM Detalles_citas
+    WHERE cita_id IN (SELECT id FROM Citas WHERE id = @id)
+
+    -- Eliminar las citas relacionadas con el usuario
+    DELETE FROM Citas
+    WHERE id = @id
+END
+---------------------------------------------------------------
+CREATE PROCEDURE spEditarEstado
+(
+    @id INT,
+    @estado Varchar(20),
+	@descripcion varchar(500)
+)
+AS
+BEGIN
+    UPDATE Estados
+    SET
+        estado = @estado,
+		descripcion = @descripcion
+    WHERE
+        cita_id = @id
+END
+---------------------------------------------------------------
+CREATE PROCEDURE spObtenerCitaAdminId
+	@id int
+AS
+BEGIN
+	select c.id,dc.fecha, dc.horario, e.estado, e.descripcion from Citas c
+	INNER JOIN Detalles_citas dc ON c.id = dc.cita_id
+	INNER JOIN Estados e ON c.id = e.cita_id
+	WHERE c.id = @id
+END
+
+---------------------------------------------------------------
+CREATE PROCEDURE sp_obtenerCitasAdmin
+AS
+BEGIN
+	select c.id,dc.fecha, dc.horario, e.estado, e.descripcion from Citas c
+	INNER JOIN Detalles_citas dc ON c.id = dc.cita_id
+	INNER JOIN Estados e ON c.id = e.cita_id
+END
+
+---------------------------------------------------------------
+CREATE PROCEDURE VerificarCoincidencia
+    @fecha datetime,
+    @hora varchar(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @existe int
+
+    SELECT @existe = COUNT(*) 
+    FROM Detalles_citas 
+    WHERE fecha = @fecha AND horario = CAST(@hora as time)
+
+    SELECT @existe AS ExisteCoincidencia
+END
